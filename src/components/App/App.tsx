@@ -1,11 +1,5 @@
-import { useState } from 'react';
-import {
-  useQuery,
-  keepPreviousData,
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
-import { deleteNote } from '../../services/noteService';
+import { useState, useEffect } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useDebounce } from 'use-debounce';
 
 import NoteList from '../NoteList/NoteList';
@@ -24,25 +18,16 @@ export default function App() {
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
 
-  const QueryClient = useQueryClient();
-
-  const { mutate: deleteNoteId } = useMutation({
-    mutationFn: deleteNote,
-    onSuccess: () => {
-      QueryClient.invalidateQueries({ queryKey: ['note'] });
-    },
-  });
-
-  const handleDelete = (id: string) => {
-    deleteNoteId(id);
-  };
-
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [debouncedSearchTerm] = useDebounce(searchTerm, 3000);
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 2000);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['note', currentPage, debouncedSearchTerm],
+    queryKey: ['notes', currentPage, debouncedSearchTerm],
     queryFn: () => fetchNotes(currentPage, 12, debouncedSearchTerm),
     placeholderData: keepPreviousData,
   });
@@ -60,15 +45,14 @@ export default function App() {
             onPageChange={setCurrentPage}
           />
         )}
+
         <button className={css.button} onClick={handleOpenModal}>
           Create note +
         </button>
       </header>
       {isLoading && <Loader />}
       {isError && <ErrorMessage />}
-      {data?.notes && data.notes.length > 0 && (
-        <NoteList notes={data.notes} onDelete={handleDelete} />
-      )}
+      {data?.notes && data.notes.length > 0 && <NoteList notes={data.notes} />}
 
       {isModalOpen && (
         <Modal onClose={handleCloseModal}>
